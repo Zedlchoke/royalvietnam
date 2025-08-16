@@ -115,7 +115,7 @@ export const documentTransactions = pgTable("document_transactions", {
   documentType: text("document_type").notNull(), // Loại hồ sơ chính
   
   // Hỗ trợ multi-document transactions với chi tiết đầy đủ
-  documentDetails: jsonb("document_details").$type<Record<string, {quantity: number, unit: string, notes?: string}>>().default({}).notNull(), // Chi tiết hồ sơ: loại -> {số lượng, đơn vị, ghi chú}
+  documentDetails: jsonb("document_details").default({}).notNull(), // Chi tiết hồ sơ: loại -> {số lượng, đơn vị, ghi chú}
 
   deliveryCompany: text("delivery_company").notNull(), // Công ty giao
   receivingCompany: text("receiving_company").notNull(), // Công ty nhận

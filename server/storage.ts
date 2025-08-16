@@ -72,11 +72,23 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async createBusiness(business: InsertBusiness): Promise<Business> {
-    const [createdBusiness] = await db
-      .insert(businesses)
-      .values(business)
-      .returning();
-    return createdBusiness;
+    try {
+      console.log("Creating business:", business);
+      const [createdBusiness] = await db
+        .insert(businesses)
+        .values([business])
+        .returning();
+      
+      console.log("Business created:", createdBusiness);
+      
+      // Invalidate businesses cache after creation
+      cache.clear(CACHE_KEYS.BUSINESSES_COUNT);
+      
+      return createdBusiness;
+    } catch (error) {
+      console.error("Error creating business:", error);
+      throw error;
+    }
   }
 
   async getBusinessById(id: number): Promise<Business | undefined> {
@@ -223,10 +235,12 @@ export class DatabaseStorage implements IStorage {
   // Document transaction operations
   async createDocumentTransaction(transaction: InsertDocumentTransaction): Promise<DocumentTransaction> {
     try {
+      console.log("Creating document transaction:", transaction);
       const [createdTransaction] = await db
         .insert(documentTransactions)
-        .values(transaction)
+        .values([transaction])
         .returning();
+      console.log("Document transaction created:", createdTransaction);
       return createdTransaction;
     } catch (error) {
       console.error("Error creating document transaction:", error);
@@ -371,13 +385,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async authenticateAdmin(login: LoginRequest): Promise<AdminUser | null> {
-    const [user] = await db
-      .select()
-      .from(adminUsers)
-      .where(eq(adminUsers.username, login.username));
-    
-    if (user && user.password === login.password) {
-      return user;
+    // Hardcoded admin authentication - no database needed
+    if (login.username === "quanadmin" && login.password === "01020811") {
+      return {
+        id: 1,
+        username: "quanadmin",
+        password: "01020811",
+        role: "admin",
+        createdAt: new Date()
+      };
     }
     return null;
   }
@@ -413,16 +429,7 @@ export class DatabaseStorage implements IStorage {
     try {
       const client = await pool.connect();
       
-      // Create admin_users table
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS admin_users (
-          id SERIAL PRIMARY KEY,
-          username VARCHAR(255) UNIQUE NOT NULL,
-          password VARCHAR(255) NOT NULL,
-          role VARCHAR(50) DEFAULT 'admin',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+      // No admin_users table needed - authentication is hardcoded
 
       // ULTRA-MINIMAL businesses table - only essential fields to save storage & compute
       await client.query(`
@@ -500,18 +507,8 @@ export class DatabaseStorage implements IStorage {
       console.error("Error creating tables:", error);
     }
 
-    // Create admin user if not exists  
-    try {
-      await this.createAdminUser({
-        username: "quanadmin",
-        password: "01020811"
-      });
-      console.log("Admin user created successfully");
-    } catch (error) {
-      // Admin user might already exist, that's okay
-      console.log("Admin user already exists or creation failed:", error);
-    }
-    
+    // No admin user creation needed - authentication is hardcoded
+    console.log("Admin authentication: hardcoded (quanadmin/01020811)");
     console.log("Database initialization completed");
   }
 

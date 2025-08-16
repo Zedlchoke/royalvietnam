@@ -6,6 +6,15 @@ This is a full-stack business management application built with React, TypeScrip
 
 ## Recent Changes (August 2025)
 
+### ✅ SIMPLIFIED AUTHENTICATION & SCHEMA MAPPING FIX - Completed (August 16, 2025)
+- **HARDCODED AUTHENTICATION**: Removed admin_users table dependency - authentication now hardcoded in server code
+- **SCHEMA MAPPING FIXED**: Database schema now perfectly matches client form components 
+- **PRODUCTION READY SQL**: Created SIMPLIFIED_DEPLOYMENT_SCRIPT.sql with exact column mapping
+- **AUTHENTICATION SIMPLIFIED**: Admin (quanadmin/01020811) and Employee (any-username/royalvietnam) hardcoded
+- **DATABASE VERIFIED**: SQL script tested and working on Neon PostgreSQL production database
+- **NO DATABASE AUTH**: Eliminated database dependency for user authentication - purely code-based
+- **DEPLOYMENT READY**: Zero database auth setup needed for clean Render deployment
+
 ### ✅ RENDER PRODUCTION OPTIMIZATION & CUSTOM DOCUMENT TYPES - Completed (August 16, 2025)
 - **CUSTOM DOCUMENT TYPES**: Replaced all fixed dropdowns with free text input for document types
 - **USER FLEXIBILITY**: Users can now input any document name (e.g., "Hồ sơ đăng ký thương hiệu", "Giấy phép lao động")
