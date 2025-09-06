@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Plus, Search, LogIn, LogOut, Settings, Key } from "lucide-react";
-import logoImage from "@assets/Picture1_1754621344471.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -80,7 +79,7 @@ export default function Dashboard() {
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm p-1">
                 <img 
-                  src={logoImage} 
+                  src="/placeholder-logo.png" 
                   alt="Royal Việt Nam Logo" 
                   className="w-full h-full object-contain"
                 />

@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Users, Building } from "lucide-react";
-import logoImage from "@assets/Picture1_1754621344471.png";
 
 interface UserTypeSelectorProps {
   onSelectUserType: (userType: "admin" | "employee") => void;
@@ -17,7 +16,7 @@ export function UserTypeSelector({ onSelectUserType }: UserTypeSelectorProps) {
         <div className="text-center space-y-4">
           <div className="bg-white dark:bg-gray-800 rounded-full w-20 h-20 mx-auto flex items-center justify-center shadow-lg p-2">
             <img 
-              src={logoImage} 
+              src="/placeholder-logo.png" 
               alt="Royal Việt Nam Logo" 
               className="w-full h-full object-contain"
             />

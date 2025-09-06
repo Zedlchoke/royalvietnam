@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Crown, Users, Building, Loader2 } from "lucide-react";
 import type { UserLoginRequest } from "@shared/schema";
-import logoImage from "@assets/Picture1_1754621344471.png";
 
 interface UnifiedLoginFormProps {
   userType: "admin" | "employee";
@@ -111,7 +110,7 @@ export function UnifiedLoginForm({ userType, onLogin, onBack }: UnifiedLoginForm
           <div className="text-center space-y-2">
             <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-full mx-auto flex items-center justify-center shadow-lg p-2">
               <img 
-                src={logoImage} 
+                src="/placeholder-logo.png" 
                 alt="Royal Việt Nam Logo" 
                 className="w-full h-full object-contain"
               />

@@ -1,4 +1,4 @@
-export const API_BASE_URL = "";
+export const API_BASE_URL = import.meta.env.PROD ? "" : "http://localhost:5001";
 
 export interface ApiResponse<T = any> {
   data?: T;

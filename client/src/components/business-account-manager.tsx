@@ -1,3 +1,4 @@
+/// <reference types="react/jsx-runtime" />
 import { useState, useEffect } from "react";
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,10 +49,11 @@ export function BusinessAccountManager({ business, isOpen, onClose }: BusinessAc
   // Save account data
   const saveMutation = useMutation({
     mutationFn: async (data: Partial<InsertBusinessAccount>) => {
-      return apiRequest(`/api/businesses/${business.id}/accounts`, {
-        method: account?.id ? "PUT" : "POST",
-        body: JSON.stringify({ ...data, businessId: business.id }),
-      });
+      return apiRequest(
+        account?.id ? "PUT" : "POST",
+        `/api/businesses/${business.id}/accounts`,
+        JSON.stringify({ ...data, businessId: business.id })
+      );
     },
     onSuccess: () => {
       toast({
@@ -74,9 +76,9 @@ export function BusinessAccountManager({ business, isOpen, onClose }: BusinessAc
   };
 
   const togglePasswordVisibility = (field: string) => {
-    setShowPasswords(prev => ({
+    setShowPasswords((prev: Record<string, boolean>) => ({
       ...prev,
-      [field]: !prev[field]
+      [field]: !prev[field],
     }));
   };
 
@@ -87,7 +89,12 @@ export function BusinessAccountManager({ business, isOpen, onClose }: BusinessAc
         <Input
           type={showPasswords[field] ? "text" : "password"}
           value={value || ""}
-          onChange={(e) => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setFormData((prev: Partial<InsertBusinessAccount>) => ({
+              ...prev,
+              [field]: e.target.value,
+            }))
+          }
           className="pr-10"
         />
         <Button
