@@ -11,7 +11,7 @@ if (!process.env.DATABASE_URL) {
 // Optimized connection configuration for Render deployment
 const connectionConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.DB_SSL_ENABLED === 'true' ? { rejectUnauthorized: false } : false,
   
   // Render-optimized settings
   connectionTimeoutMillis: 5000,    // Longer timeout for Render
@@ -31,7 +31,7 @@ const connectionConfig = {
   // Render-specific optimizations
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
-}
+};
 
 export const pool = new Pool(connectionConfig);
 export const db = drizzle(pool, { schema });

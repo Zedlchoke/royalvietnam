@@ -112,7 +112,10 @@ export const documentTransactions = pgTable("document_transactions", {
   id: serial("id").primaryKey(),
   businessId: integer("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
   documentNumber: text("document_number"), // Số văn bản
-  documentType: text("document_type").notNull(), // Loại hồ sơ chính
+  // Thay đổi documentType thành documentTypes (mảng văn bản) và thêm quantities, units
+  documentTypes: text("document_types").array().notNull(), // Loại hồ sơ
+  quantities: integer("quantities").array().notNull(), // Số lượng
+  units: text("units").array().notNull(), // Đơn vị
   
   // Hỗ trợ multi-document transactions với chi tiết đầy đủ
   documentDetails: jsonb("document_details").default({}).notNull(), // Chi tiết hồ sơ: loại -> {số lượng, đơn vị, ghi chú}

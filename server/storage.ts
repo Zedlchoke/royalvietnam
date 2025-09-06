@@ -425,86 +425,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async initializeDatabase(): Promise<void> {
-    // First, try to create tables if they don't exist using raw SQL
+    // Drizzle Kit sẽ quản lý migrations, không tạo bảng thủ công
     try {
       const client = await pool.connect();
-      
-      // No admin_users table needed - authentication is hardcoded
-
-      // ULTRA-MINIMAL businesses table - only essential fields to save storage & compute
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS businesses (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          tax_id VARCHAR(50) NOT NULL UNIQUE,
-          phone VARCHAR(20),
-          
-          -- Essential account fields only (7 core account types)
-          tax_account_id VARCHAR(255),
-          tax_account_password VARCHAR(255),
-          hddt_lookup_id VARCHAR(255), 
-          hddt_lookup_password VARCHAR(255),
-          web_hddt_website VARCHAR(255),
-          web_hddt_id VARCHAR(255),
-          web_hddt_password VARCHAR(255),
-          social_insurance_code VARCHAR(255),
-          social_insurance_id VARCHAR(255),
-          social_insurance_main_password VARCHAR(255),
-          social_insurance_sub_password VARCHAR(255),
-          token_id VARCHAR(255),
-          token_password VARCHAR(255),
-          token_provider VARCHAR(255),
-          token_registration_date VARCHAR(255),
-          token_expiry_date VARCHAR(255),
-          token_management_location VARCHAR(255),
-          statistics_id VARCHAR(255),
-          statistics_password VARCHAR(255),
-          audit_software_website VARCHAR(255),
-          audit_software_id VARCHAR(255),
-          audit_software_password VARCHAR(255),
-          
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-
-      // COST-EFFICIENT indexes - essential only
-      await client.query(`
-        CREATE INDEX IF NOT EXISTS idx_businesses_tax_id ON businesses(tax_id);
-        CREATE INDEX IF NOT EXISTS idx_businesses_created_at ON businesses(created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_businesses_name ON businesses(name);
-      `);
-
-      // Create document_transactions table with OPTIMIZED SCHEMA + INDEXES
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS document_transactions (
-          id SERIAL PRIMARY KEY,
-          business_id INTEGER REFERENCES businesses(id) ON DELETE CASCADE,
-          document_number TEXT,
-          transaction_type VARCHAR(50) NOT NULL,
-          sender_business_id INTEGER REFERENCES businesses(id),
-          receiver_business_id INTEGER REFERENCES businesses(id),
-          document_types TEXT[] NOT NULL,
-          quantities INTEGER[] NOT NULL,
-          units TEXT[] NOT NULL,
-          notes TEXT,
-          handover_report TEXT,
-          pdf_file_path VARCHAR(500),
-          pdf_file_name VARCHAR(255),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-
-      // MINIMAL indexes for document transactions only
-      await client.query(`
-        CREATE INDEX IF NOT EXISTS idx_document_transactions_business_id ON document_transactions(business_id);
-        CREATE INDEX IF NOT EXISTS idx_document_transactions_created_at ON document_transactions(created_at DESC);
-      `);
-
+      // Không cần tạo bảng thủ công ở đây nữa, Drizzle Kit sẽ lo
       client.release();
-      console.log("Database tables created successfully");
+      console.log("Database connection verified, migrations will be handled by Drizzle Kit.");
     } catch (error) {
-      console.error("Error creating tables:", error);
+      console.error("Error during database initialization (manual table creation removed):", error);
+      throw error; // Quan trọng: ném lỗi để biết nếu database không kết nối được
     }
 
     // No admin user creation needed - authentication is hardcoded

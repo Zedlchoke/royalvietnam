@@ -111,60 +111,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { pool } = await import("./db");
       const client = await pool.connect();
 
-      // Create tables
+      // Chỉ tạo admin user, không tạo lại bảng để tránh xung đột với initializeDatabase()
       await client.query(`
-        CREATE TABLE IF NOT EXISTS admin_users (
-          id SERIAL PRIMARY KEY,
-          username VARCHAR(255) UNIQUE NOT NULL,
-          password VARCHAR(255) NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS businesses (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          tax_id VARCHAR(100) UNIQUE,
-          address TEXT,
-          phone VARCHAR(50),
-          email VARCHAR(255),
-          website VARCHAR(255),
-          industry VARCHAR(255),
-          contact_person VARCHAR(255),
-          account VARCHAR(255),
-          password VARCHAR(255),
-          bank_account VARCHAR(255),
-          bank_name VARCHAR(255),
-          custom_fields JSONB DEFAULT '{}',
-          notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS document_transactions (
-          id SERIAL PRIMARY KEY,
-          business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
-          document_type VARCHAR(255) NOT NULL,
-          transaction_type VARCHAR(50) NOT NULL,
-          handled_by VARCHAR(255) NOT NULL,
-          transaction_date TIMESTAMP NOT NULL,
-          notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-
-      // Create admin user
-      await client.query(`
-        INSERT INTO admin_users (username, password) 
+        INSERT INTO admin_users (username, password)
         VALUES ('quanadmin', '01020811')
         ON CONFLICT (username) DO NOTHING
       `);
 
       client.release();
-      console.log("Migration completed successfully");
-      res.json({ message: "Migration completed successfully" });
+      console.log("Migration completed successfully (tables skipped)");
+      res.json({ message: "Migration completed successfully (tables skipped)" });
     } catch (error) {
       console.error("Migration failed:", error);
       res.status(500).json({ message: "Migration failed", error: error instanceof Error ? error.message : String(error) });
