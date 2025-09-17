@@ -64,7 +64,6 @@ export interface IStorage {
   getBusinessAccountByBusinessId(businessId: number): Promise<BusinessAccount | null>;
   createBusinessAccount(account: InsertBusinessAccount): Promise<BusinessAccount>;
   updateBusinessAccount(businessId: number, account: Partial<InsertBusinessAccount>): Promise<BusinessAccount>;
-  updateDocumentPdf(id: number, pdfPath: string): Promise<boolean>;
   
   // Database initialization
   initializeDatabase(): Promise<void>;
@@ -475,20 +474,6 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updatedAccount;
-  }
-
-  async updateDocumentPdf(id: number, pdfPath: string): Promise<boolean> {
-    try {
-      const result = await db
-        .update(documentTransactions)
-        .set({ signedFilePath: pdfPath })
-        .where(eq(documentTransactions.id, id))
-        .returning();
-      return result.length > 0;
-    } catch (error) {
-      console.error("Error updating document PDF:", error);
-      return false;
-    }
   }
 
   // New authentication methods

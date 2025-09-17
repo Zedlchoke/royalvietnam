@@ -452,12 +452,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/objects/:objectPath(*)", async (req, res) => {
-    // This route is no longer needed as we are not using ObjectStorageService.
-    // Any requests to this endpoint should result in a 404 or a redirect if applicable.
-    return res.sendStatus(404);
-  });
-
   // Update document transaction with PDF file
   app.put("/api/documents/:id/pdf", async (req, res) => {
     try {
@@ -471,7 +465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "URL PDF và tên file là bắt buộc" });
       }
 
-      // The pdfUrl from client is already in the format /objects/path/to/file.pdf
+      // The pdfUrl from client is already the relative path from Multer
       const normalizedPath = pdfUrl; 
 
       console.log("Calling updateDocumentTransactionPdf with:", { id, normalizedPath, fileName });
@@ -687,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching document transactions by tax ID:", error);
-      res.status(500).json({ message: "Lỗi khi tải hồ sơ theo mã số thuế" });
+      res.status(500).json({ message: "Lỗi khi tải danh sách giao dịch hồ sơ theo mã số thuế" });
     }
   });
 
@@ -820,7 +814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Relative path:", relativePath);
       res.json({ 
         message: "File uploaded successfully",
-        filePath: `/objects/${relativePath}` // Pretend it's an object storage path for consistency
+        filePath: `${relativePath}` // Return the relative path for consistency with client
       });
     } catch (error) {
       console.error("Error uploading PDF with Multer:", error);
@@ -828,21 +822,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Multer error details:", error.message, error.stack);
       }
       res.status(500).json({ message: "Failed to upload PDF" });
-    }
-  });
-
-  // Object storage routes
-  app.get("/objects/:objectPath(*)", async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const objectFile = await objectStorageService.getObjectEntityFile(`/objects/${req.params.objectPath}`);
-      objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error("Error downloading object:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.sendStatus(404);
-      }
-      return res.sendStatus(500);
     }
   });
 
@@ -887,21 +866,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching document transactions by tax ID:", error);
       res.status(500).json({ message: "Lỗi khi tải danh sách giao dịch hồ sơ theo mã số thuế" });
-    }
-  });
-
-  // Delete PDF from document transaction
-  app.delete("/api/documents/:id/pdf", async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      const success = await storage.updateDocumentTransactionPdf(id, null, null);
-      if (!success) {
-        return res.status(404).json({ message: "Không tìm thấy giao dịch hồ sơ" });
-      }
-      res.json({ message: "Xóa PDF thành công" });
-    } catch (error) {
-      console.error("Error deleting PDF:", error);
-      res.status(500).json({ message: "Lỗi khi xóa PDF" });
     }
   });
 
