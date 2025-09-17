@@ -4,7 +4,7 @@ import Uppy from "@uppy/core";
 import { DashboardModal } from "@uppy/react";
 import "@uppy/core/dist/style.min.css";
 import "@uppy/dashboard/dist/style.min.css";
-import AwsS3 from "@uppy/aws-s3";
+import XHRUpload from "@uppy/xhr-upload";
 import type { UploadResult } from "@uppy/core";
 import { Button } from "@/components/ui/button";
 
@@ -12,9 +12,8 @@ interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
   allowedFileTypes?: string[];
-  onGetUploadParameters: () => Promise<{
-    method: "PUT";
-    url: string;
+  onGetUploadParameters?: () => Promise<{
+    uploadUrl: string;
   }>;
   onComplete?: (
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
@@ -42,7 +41,7 @@ export function ObjectUploader({
   maxNumberOfFiles = 1,
   maxFileSize = 10485760, // 10MB default
   allowedFileTypes = [".pdf"],
-  onGetUploadParameters,
+  onGetUploadParameters = async () => ({ uploadUrl: "/api/upload-pdf" }), // Default to new endpoint
   onComplete,
   buttonClassName,
   children,
@@ -57,9 +56,21 @@ export function ObjectUploader({
       },
       autoProceed: false,
     })
-      .use(AwsS3, {
-        shouldUseMultipart: false,
-        getUploadParameters: onGetUploadParameters,
+      .use(XHRUpload, {
+        endpoint: "/api/upload-pdf", // Our new upload endpoint
+        fieldName: "pdfFile", // The name of the file field on the server
+        formData: true, // Send as FormData
+        bundle: false, // Send files one by one
+        headers: () => {
+          const token = localStorage.getItem("token"); // Assuming token is stored in localStorage
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        },
+        getResponseData: (responseText, xhr) => {
+          const response = JSON.parse(responseText);
+          // For XHRUpload, we need to return meta data to Uppy to update file status
+          // The filePath returned by our server endpoint becomes the 'uploadURL' for Uppy to track.
+          return { url: response.filePath }; 
+        },
       })
       .on("complete", (result) => {
         onComplete?.(result);

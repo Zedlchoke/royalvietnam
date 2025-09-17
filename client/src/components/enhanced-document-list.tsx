@@ -307,8 +307,10 @@ export function EnhancedDocumentList({ selectedBusinessId, selectedBusinessName,
 
       const transactionData = {
         documentNumber: data.documentNumber || undefined,
-        documentType: documentTypeSummary,
-        documentDetails: documentDetails,
+        documentTypes: data.documents.map(doc => doc.type), // Thêm mảng documentTypes
+        quantities: data.documents.map(doc => doc.quantity), // Thêm mảng quantities
+        units: data.documents.map(doc => doc.unit),       // Thêm mảng units
+        documentDetails: documentDetails, // Giữ nguyên object JSONB
         deliveryCompany: data.deliveryCompany,
         receivingCompany: data.receivingCompany,
         deliveryPerson: data.deliveryPerson,
@@ -572,11 +574,11 @@ export function EnhancedDocumentList({ selectedBusinessId, selectedBusinessName,
             <div class="company-left">
                 <h2>ROYAL VIỆT NAM</h2>
                 <p>54/6 Nguyễn Xí, P.26, Q.Bình Thạnh, Tp.HCM</p>
-                <p>tuvanktetoanthue.vn</p>
+                <p>tuvanketoanthue.vn</p>
             </div>
             <div class="company-right">
                 <p>083.5111720-721; Fax : 083.5117919</p>
-                <p>royal@tuvanktetoanthue.vn</p>
+                <p>royal@tuvanketoanthue.vn</p>
             </div>
         </div>
     </div>
