@@ -17,11 +17,27 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { 
-  ObjectStorageService,
-  ObjectNotFoundError,
+  ObjectNotFoundError // We still need this for the /objects/:objectPath(*) route
 } from "./objectStorage";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
 
 const DELETE_PASSWORD = "0102";
+
+// Configure Multer for file uploads
+const uploadDir = process.env.PRIVATE_OBJECT_DIR || "/app/uploads"; // Use the same directory as object storage
+const storageConfig = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    await fs.mkdir(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storageConfig });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for Render
@@ -436,30 +452,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Object storage routes for signed document upload
-  app.post("/api/objects/upload", async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ error: "Failed to get upload URL" });
-    }
-  });
-
   app.get("/objects/:objectPath(*)", async (req, res) => {
-    const objectStorageService = new ObjectStorageService();
-    try {
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error("Error accessing object:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.sendStatus(404);
-      }
-      return res.sendStatus(500);
-    }
+    // This route is no longer needed as we are not using ObjectStorageService.
+    // Any requests to this endpoint should result in a 404 or a redirect if applicable.
+    return res.sendStatus(404);
   });
 
   // Update document transaction with PDF file
@@ -475,8 +471,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "URL PDF và tên file là bắt buộc" });
       }
 
-      const objectStorageService = new ObjectStorageService();
-      const normalizedPath = objectStorageService.normalizeObjectEntityPath(pdfUrl);
+      // The pdfUrl from client is already in the format /objects/path/to/file.pdf
+      const normalizedPath = pdfUrl; 
 
       console.log("Calling updateDocumentTransactionPdf with:", { id, normalizedPath, fileName });
       const success = await storage.updateDocumentTransactionPdf(id, normalizedPath, fileName);
@@ -508,11 +504,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Delete file from object storage if exists
       if (transaction.pdfFilePath) {
+        // Extract the actual file path from the stored /objects/ prefix
+        const localFilePath = path.join(uploadDir, transaction.pdfFilePath.replace('/objects/', ''));
         try {
-          const objectStorageService = new ObjectStorageService();
-          await objectStorageService.deleteObject(transaction.pdfFilePath);
+          await fs.unlink(localFilePath);
+          console.log(`Deleted file: ${localFilePath}`);
         } catch (error) {
-          console.warn("Could not delete file from storage:", error);
+          console.warn("Could not delete file from local storage:", localFilePath, error);
         }
       }
 
@@ -542,13 +540,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Không tìm thấy file PDF" });
       }
 
-      const objectStorageService = new ObjectStorageService();
-      const objectFile = await objectStorageService.getObjectEntityFile(transaction.pdfFilePath);
+      // Construct local file path
+      const localFilePath = path.join(uploadDir, transaction.pdfFilePath.replace('/objects/', ''));
       
-      // Pass custom filename to downloadObject function
+      try {
+        // Check if file exists
+        await fs.access(localFilePath);
+      } catch (e) {
+        console.error(`File not found at ${localFilePath}:`, e);
+        return res.status(404).json({ message: "Không tìm thấy file PDF trên hệ thống" });
+      }
+
+      // Set content disposition for download
       const fileName = transaction.pdfFileName || `transaction_${id}.pdf`;
-      
-      await objectStorageService.downloadObject(objectFile, res, 3600, fileName);
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+      res.setHeader('Content-Type', 'application/pdf');
+
+      // Stream the file to the response
+      res.sendFile(localFilePath);
     } catch (error) {
       console.error("Error downloading PDF:", error);
       if (!res.headersSent) {
@@ -789,44 +798,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PDF upload endpoints for document transactions
-  app.post("/api/documents/pdf-upload", async (req, res) => {
+  // New PDF upload endpoint using Multer
+  app.post("/api/upload-pdf", upload.single('pdfFile'), async (req, res) => {
+    console.log("PDF upload request received.");
     try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting PDF upload URL:", error);
-      res.status(500).json({ error: "Failed to get PDF upload URL" });
-    }
-  });
-
-  app.get("/documents/:documentPath(*)", async (req, res) => {
-    const objectStorageService = new ObjectStorageService();
-    try {
-      const pdfFile = await objectStorageService.getObjectEntityFile(`/objects/${req.params.documentPath}`);
-      objectStorageService.downloadObject(pdfFile, res);
-    } catch (error) {
-      console.error("Error accessing PDF document:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.sendStatus(404);
+      if (req.file) {
+        console.log("File received:", req.file);
+      } else {
+        console.log("No file received in request.");
       }
-      return res.sendStatus(500);
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      // req.file.path will be something like /app/uploads/pdfFile-123456789.pdf
+      const filePathInContainer = req.file.path;
+      // We need to store a path relative to the object storage service's base path, or a public URL
+      // For now, let's just return the path relative to the container's UPLOAD_DIR
+      const relativePath = path.relative(uploadDir, filePathInContainer);
+      console.log("Upload directory:", uploadDir);
+      console.log("File path in container:", filePathInContainer);
+      console.log("Relative path:", relativePath);
+      res.json({ 
+        message: "File uploaded successfully",
+        filePath: `/objects/${relativePath}` // Pretend it's an object storage path for consistency
+      });
+    } catch (error) {
+      console.error("Error uploading PDF with Multer:", error);
+      if (error instanceof Error) {
+        console.error("Multer error details:", error.message, error.stack);
+      }
+      res.status(500).json({ message: "Failed to upload PDF" });
     }
   });
 
   // Object storage routes
-  app.post("/api/objects/upload", async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ error: "Failed to get upload URL" });
-    }
-  });
-
   app.get("/objects/:objectPath(*)", async (req, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
@@ -873,41 +878,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload PDF file for document transaction
-  app.put("/api/documents/:id/upload-pdf", async (req, res) => {
-    try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      const authData = token ? authTokens.get(token) : null;
-      
-      if (!authData) {
-        return res.status(401).json({ message: "Chưa đăng nhập" });
-      }
-
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "ID không hợp lệ" });
-      }
-
-      const { pdfPath } = req.body;
-      if (typeof pdfPath !== 'string') {
-        return res.status(400).json({ message: "Đường dẫn PDF không hợp lệ" });
-      }
-
-      const objectStorageService = new ObjectStorageService();
-      const normalizedPath = objectStorageService.normalizeObjectEntityPath(pdfPath);
-
-      const success = await storage.updateDocumentPdf(id, normalizedPath);
-      if (!success) {
-        return res.status(404).json({ message: "Không tìm thấy giao dịch hồ sơ" });
-      }
-
-      res.json({ message: "Tải lên PDF thành công", pdfPath: normalizedPath });
-    } catch (error) {
-      console.error("Error uploading PDF:", error);
-      res.status(500).json({ message: "Lỗi khi tải lên PDF" });
-    }
-  });
-
   // Get document transactions by tax ID (chỉ hiển thị giao dịch liên quan đến doanh nghiệp có mã số thuế này)
   app.get("/api/documents/tax-id/:taxId", async (req, res) => {
     try {
@@ -917,18 +887,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching document transactions by tax ID:", error);
       res.status(500).json({ message: "Lỗi khi tải danh sách giao dịch hồ sơ theo mã số thuế" });
-    }
-  });
-
-  // PDF upload endpoint for document transactions
-  app.post("/api/documents/pdf-upload", async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting PDF upload URL:", error);
-      res.status(500).json({ message: "Lỗi khi tạo URL tải lên PDF" });
     }
   });
 
