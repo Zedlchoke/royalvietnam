@@ -132,21 +132,6 @@ export function MultiDocumentTransactionForm({ business, onSuccess }: MultiDocum
     setDocumentCounts(prev => ({ ...prev, [type]: Math.max(1, count) }));
   };
 
-  const handlePDFUpload = async () => {
-    try {
-      const response = await fetch("/api/documents/pdf-upload", { method: "POST" });
-      const data = await response.json();
-      return { method: "PUT" as const, url: data.uploadURL };
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể tạo URL upload",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
   const onPDFUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
     if (result.successful && result.successful.length > 0) {
       const uploadedFile = result.successful[0];
@@ -296,7 +281,6 @@ export function MultiDocumentTransactionForm({ business, onSuccess }: MultiDocum
             <ObjectUploader
               maxNumberOfFiles={1}
               maxFileSize={50 * 1024 * 1024} // 50MB
-              onGetUploadParameters={handlePDFUpload}
               onComplete={onPDFUploadComplete}
             >
               <div className="flex items-center gap-2">

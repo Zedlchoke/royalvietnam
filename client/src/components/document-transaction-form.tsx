@@ -250,13 +250,13 @@ export function DocumentTransactionForm({ business }: DocumentTransactionFormPro
   const uploadPdf = useMutation({
     mutationFn: async ({ id, pdfPath }: { id: number; pdfPath: string }) => {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/documents/${id}/upload-pdf`, {
+      const response = await fetch(`/api/documents/${id}/pdf`, {
         method: "PUT",
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ pdfPath }),
+        body: JSON.stringify({ pdfUrl: pdfPath, fileName: "uploaded_document.pdf" }), // TODO: Pass actual fileName
       });
       if (!response.ok) throw new Error("Failed to upload PDF");
       return response.json();
@@ -270,6 +270,39 @@ export function DocumentTransactionForm({ business }: DocumentTransactionFormPro
     },
   });
 
+  // Delete PDF from transaction
+  const deletePdf = useMutation({
+    mutationFn: async (id: number) => {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/documents/${id}/pdf`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Xóa file thất bại');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      refetch();
+      refetchAll();
+      toast({
+        title: "Thành công",
+        description: "Xóa file PDF thành công",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
   const onSubmit = (data: InsertDocumentTransaction) => {
     // Tự động set thời gian hiện tại nếu để trống
     const currentDateTime = new Date().toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
@@ -542,14 +575,28 @@ export function DocumentTransactionForm({ business }: DocumentTransactionFormPro
                     <TableCell>
                       {transaction.signedFilePath ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-green-600 text-sm">Đã có file</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => window.open(`/objects${transaction.signedFilePath}`, "_blank")}
+                          <a 
+                            href={`/api/documents/${transaction.id}/pdf/download`}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm max-w-[120px] truncate"
+                            title={transaction.pdfFileName || 'PDF'}
                           >
                             <FileText className="w-4 h-4 mr-1" />
-                            Download PDF
+                            {transaction.pdfFileName || 'Download PDF'}
+                          </a>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm('Bạn có xác nhận để xóa file PDF của giao dịch này không?')) {
+                                deletePdf.mutate(transaction.id);
+                              }
+                            }}
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                            title="Xóa file PDF"
+                          >
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       ) : (
@@ -558,32 +605,33 @@ export function DocumentTransactionForm({ business }: DocumentTransactionFormPro
                           <ObjectUploader
                             maxNumberOfFiles={1}
                             maxFileSize={10485760}
-                            onGetUploadParameters={async () => {
-                              const token = localStorage.getItem('authToken');
-                              const response = await fetch('/api/objects/upload', {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${token}`,
+                            onComplete={async (result) => {
+                              if (result.successful.length > 0) {
+                                const uploadedFile = result.successful[0];
+                                const pdfUrl = uploadedFile.response?.filePath; // Corrected to get filePath from server response
+                                if (pdfUrl) {
+                                  // We now send the pdfUrl to the server to update the transaction
+                                  await uploadPdf.mutateAsync({
+                                    id: transaction.id,
+                                    pdfPath: pdfUrl,
+                                    fileName: uploadedFile.name,
+                                  });
+                                  toast({
+                                    title: "Thành công",
+                                    description: `File ${uploadedFile.name} đã được tải lên.`,
+                                  });
+                                } else {
+                                  toast({
+                                    title: "Lỗi",
+                                    description: "Không lấy được URL file đã tải lên.",
+                                    variant: "destructive",
+                                  });
                                 }
-                              });
-                              const data = await response.json();
-                              return { method: 'PUT' as const, url: data.uploadURL };
-                            }}
-                            onComplete={(result) => {
-                              // Handle the uploaded file using the upload URL
-                              if (result.successful && result.successful.length > 0) {
-                                const uploadURL = result.successful[0].uploadURL;
-                                fetch(`/api/documents/${transaction.id}/upload-pdf`, {
-                                  method: 'PUT',
-                                  headers: { 
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                                  },
-                                  body: JSON.stringify({ pdfPath: uploadURL })
-                                }).then(() => {
-                                  refetch();
-                                  refetchAll();
+                              } else {
+                                toast({
+                                  title: "Lỗi",
+                                  description: "Tải lên file thất bại hoặc không có file nào được tải lên.",
+                                  variant: "destructive",
                                 });
                               }
                             }}

@@ -950,72 +950,43 @@ export function EnhancedDocumentList({ selectedBusinessId, selectedBusinessName,
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-500">Chưa có file</span>
-                          <div className="relative">
-                            <input
-                              type="file"
-                              accept=".pdf"
-                              disabled={uploadPdf.isPending}
-                              onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                
-                                try {
-                                  // Get upload URL
-                                  const response = await fetch('/api/objects/upload', { method: 'POST' });
-                                  const data = await response.json();
-                                  
-                                  // Upload file directly
-                                  const uploadResponse = await fetch(data.uploadURL, {
-                                    method: 'PUT',
-                                    body: file,
-                                    headers: {
-                                      'Content-Type': 'application/pdf'
-                                    }
+                          <ObjectUploader
+                            maxNumberOfFiles={1}
+                            allowedFileTypes={[".pdf"]}
+                            onComplete={async (result) => {
+                              if (result.successful.length > 0) {
+                                const uploadedFile = result.successful[0];
+                                // The 'url' property from getResponseData in XHRUpload will be our filePath
+                                const pdfUrl = uploadedFile.response?.filePath; 
+                                if (pdfUrl) {
+                                  await uploadPdf.mutateAsync({
+                                    id: transaction.id,
+                                    pdfUrl: pdfUrl,
+                                    fileName: uploadedFile.name,
                                   });
-                                  
-                                  if (uploadResponse.ok) {
-                                    // Update database
-                                    await uploadPdf.mutateAsync({ 
-                                      id: transaction.id, 
-                                      pdfUrl: data.uploadURL,
-                                      fileName: file.name
-                                    });
-                                    
-                                    toast({
-                                      title: "Tải lên thành công",
-                                      description: `File ${file.name} đã được tải lên`,
-                                    });
-                                  } else {
-                                    throw new Error('Upload failed');
-                                  }
-                                } catch (error) {
-                                  console.error('Upload error:', error);
                                   toast({
-                                    title: "Tải lên thất bại",
-                                    description: "Không thể tải lên file PDF",
+                                    title: "Thành công",
+                                    description: `File ${uploadedFile.name} đã được tải lên.`,
+                                  });
+                                } else {
+                                  toast({
+                                    title: "Lỗi",
+                                    description: "Không lấy được URL file đã tải lên.",
                                     variant: "destructive",
                                   });
                                 }
-                                
-                                // Reset input
-                                e.target.value = '';
-                              }}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              id={`pdf-upload-${transaction.id}`}
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={uploadPdf.isPending}
-                              className="h-7 px-2 text-xs"
-                              asChild
-                            >
-                              <label htmlFor={`pdf-upload-${transaction.id}`} className="cursor-pointer">
-                                <FileText className="w-3 h-3 mr-1" />
-                                Choose file
-                              </label>
-                            </Button>
-                          </div>
+                              } else {
+                                toast({
+                                  title: "Lỗi",
+                                  description: "Tải lên file thất bại hoặc không có file nào được tải lên.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            <FileText className="w-3 h-3 mr-1" />
+                            Chọn file
+                          </ObjectUploader>
                         </div>
                       )}
                     </TableCell>
